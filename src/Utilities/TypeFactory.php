@@ -348,20 +348,24 @@ class TypeFactory
      * Builds several GraphQLTypeFields from the properties.
      *
      * @param array $properties
-     * @param bool $excludeHasOneRelations
+     * @param bool $forInputType
      * @return array
      * @throws LeuchtturmException
      */
-    private function buildFieldsFromProperty(array $properties, bool $excludeHasOneRelations = false): array
+    private function buildFieldsFromProperty(array $properties, bool $forInputType = false): array
     {
         $fields = [];
 
         foreach ($properties as $property) {
+            // omit id on input type
+            if($forInputType && $property->getName() === "id")
+                continue;
+
             // check if property is allowed and not in $hasMany or $hasOne
             if (!in_array($property->getName(), $this->ignore)
                 && !array_key_exists(Str::removeIn("_id", $property->getName()), $this->hasMany)
                 && (
-                    $excludeHasOneRelations
+                    $forInputType
                     || !array_key_exists(Str::removeIn("_id", $property->getName()), $this->hasOne)
                 )) {
                 $fields[] = $this->buildFieldFromProperty($property);

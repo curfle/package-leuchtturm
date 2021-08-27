@@ -11,7 +11,10 @@ class German implements Vocab
      */
     private array $exceptions = [
         "job" => "jobs",
-        "login" => "logins"
+        "login" => "logins",
+        "konto" => "konten",
+        "pizza" => "pizzen",
+        "kaktus" => "kakteen",
     ];
 
     public function __construct(array $exceptions = [])
