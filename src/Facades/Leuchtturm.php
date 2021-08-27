@@ -10,15 +10,15 @@ use Leuchtturm\Utilities\TypeFactory;
 use Leuchtturm\Vocab\Vocab;
 
 /**
- * @method LeuchtturmManager setVocab(Vocab $vocab)
- * @method TypeFactory create(string $dao, ?string $typename = null)
- * @method GraphQLType build(string $dao)
- * @method TypeFactory factory(string $dao)
- * @method FieldFactory C(string $dao, ?string $fieldname = null, string $description = "")
- * @method FieldFactory R(string $dao, ?string $fieldname = null, string $description = "")
- * @method FieldFactory U(string $dao, ?string $fieldname = null, string $description = "")
- * @method FieldFactory D(string $dao, ?string $fieldname = null, string $description = "")
- * @method FieldFactory A(string $dao, ?string $fieldname = null, string $description = "")
+ * @method static LeuchtturmManager setVocab(Vocab $vocab)
+ * @method static TypeFactory create(string $dao, ?string $typename = null)
+ * @method static GraphQLType build(string $dao)
+ * @method static TypeFactory factory(string $dao)
+ * @method static FieldFactory C(string $dao, ?string $fieldname = null, string $description = "")
+ * @method static FieldFactory R(string $dao, ?string $fieldname = null, string $description = "")
+ * @method static FieldFactory U(string $dao, ?string $fieldname = null, string $description = "")
+ * @method static FieldFactory D(string $dao, ?string $fieldname = null, string $description = "")
+ * @method static FieldFactory A(string $dao, ?string $fieldname = null, string $description = "")
  * @see \Leuchtturm\LeuchtturmManager
  */
 class Leuchtturm extends Facade{
