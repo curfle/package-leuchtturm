@@ -2,9 +2,12 @@
 
 namespace Leuchtturm\Utilities;
 
+use Curfle\Agreements\Auth\Guardian;
 use Curfle\DAO\Relationships\ManyToManyRelationship;
 use Curfle\DAO\Relationships\OneToManyRelationship;
+use Curfle\Support\Facades\Auth;
 use GraphQL\Arguments\GraphQLFieldArgument;
+use GraphQL\Errors\UnauthenticatedError;
 use GraphQL\Fields\GraphQLTypeField;
 use GraphQL\Types\GraphQLBoolean;
 use GraphQL\Types\GraphQLInt;
@@ -57,6 +60,13 @@ class FieldFactory
      * @var string
      */
     private string $operation;
+
+    /**
+     * Guardian that protects the field.
+     *
+     * @var ?Guardian
+     */
+    private ?Guardian $guardian = null;
 
     /**
      * TypeFactory for building type and input type of the GraphQLTypeField.
@@ -112,12 +122,16 @@ class FieldFactory
      */
     private function buildResolve(): \Closure
     {
+        $this_ = $this;
         $dao = $this->dao;
         $pureName = $this->pureName;
         $hasOne = $this->typeFactory->getHasOne();
         $hasMany = $this->typeFactory->getHasMany();
         return match ($this->operation) {
             FieldFactory::CREATE => function ($parent, $args) use ($dao, $pureName, $hasMany) {
+                // check permissions
+                $this->validateRequestWithGuardian();
+
                 // store ids to other relations
                 $relationsToAdd = [];
                 foreach ($hasMany as $field => $value) {
@@ -144,9 +158,15 @@ class FieldFactory
                 return $entry;
             },
             FieldFactory::READ => function ($parent, $args) use ($dao) {
+                // check permissions
+                $this->validateRequestWithGuardian();
+
                 return call_user_func("$dao::get", $args["id"]);
             },
             FieldFactory::UPDATE => function ($parent, $args) use ($dao, $pureName, $hasMany) {
+                // check permissions
+                $this->validateRequestWithGuardian();
+
                 // store ids to other relations
                 $relationsToAdd = [];
                 foreach ($hasMany as $field => $value) {
@@ -190,10 +210,17 @@ class FieldFactory
                 return $entry->update();
             },
             FieldFactory::DELETE => function ($parent, $args) use ($dao, $pureName) {
+                // check permissions
+                $this->validateRequestWithGuardian();
+
+                // delete entry
                 $entry = call_user_func("$dao::get", $args["id"]);
                 return $entry->delete();
             },
-            FieldFactory::ALL => function ($parent) use ($dao) {
+            FieldFactory::ALL => function ($parent) use ($dao, $this_) {
+                // check permissions
+                $this->validateRequestWithGuardian();
+
                 return call_user_func("$dao::all");
             },
         };
@@ -285,5 +312,28 @@ class FieldFactory
         return $this;
     }
 
+    /**
+     * Sets the guardian that protects the route.
+     *
+     * @param string $name
+     * @return $this
+     */
+    public function guardian(string $name = "default"): static
+    {
+        $this->guardian = Auth::guardian($name);
+        return $this;
+    }
 
+    /**
+     * Validates the current request and throws a UnauthenticatedError-GraphQLError if
+     * the request is not allowed to access this field.
+     *
+     * @throws UnauthenticatedError
+     */
+    private function validateRequestWithGuardian(): void
+    {
+        if($this->guardian !== null
+            && !$this->guardian->validate(app("request")))
+            throw new UnauthenticatedError("Access denied");
+    }
 }
