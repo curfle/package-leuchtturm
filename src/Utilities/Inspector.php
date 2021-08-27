@@ -142,7 +142,7 @@ class Inspector
         $textProperties = [];
 
         foreach ($lines as $line) {
-            $regex = '/ ?\*? ?@property(-read|-write)? ((\\\\?([A-Z]|[a-z])+)+(\[\])?) (\$([A-Z]|[a-z])+)/m';
+            $regex = '/ ?\*? ?@property(-read|-write)? ((\\\\?([A-Z]|[a-z]|_)+)+(\[\])?) (\$([A-Z]|[a-z]|_)+)/m';
             $str = '@property Benutzer $user';
 
             preg_match_all($regex, $line, $matches, PREG_PATTERN_ORDER, 0);
