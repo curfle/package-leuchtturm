@@ -64,9 +64,16 @@ class FieldFactory
     /**
      * Guardian that protects the field.
      *
-     * @var ?Guardian
+     * @var string|null
      */
-    private ?Guardian $guardian = null;
+    private ?string $guardian = null;
+
+    /**
+     * Guardian that verifies the ownership and protects the field.
+     *
+     * @var string|null
+     */
+    private ?string $ownerGuardian = null;
 
     /**
      * TypeFactory for building type and input type of the GraphQLTypeField.
@@ -159,13 +166,13 @@ class FieldFactory
             },
             FieldFactory::READ => function ($parent, $args) use ($dao) {
                 // check permissions
-                $this->validateRequestWithGuardian();
+                $this->validateRequestWithGuardian($args["id"]);
 
                 return call_user_func("$dao::get", $args["id"]);
             },
             FieldFactory::UPDATE => function ($parent, $args) use ($dao, $pureName, $hasMany) {
                 // check permissions
-                $this->validateRequestWithGuardian();
+                $this->validateRequestWithGuardian($args["id"]);
 
                 // store ids to other relations
                 $relationsToAdd = [];
@@ -211,7 +218,7 @@ class FieldFactory
             },
             FieldFactory::DELETE => function ($parent, $args) use ($dao, $pureName) {
                 // check permissions
-                $this->validateRequestWithGuardian();
+                $this->validateRequestWithGuardian($args["id"]);
 
                 // delete entry
                 $entry = call_user_func("$dao::get", $args["id"]);
@@ -320,7 +327,19 @@ class FieldFactory
      */
     public function guardian(string $name = "default"): static
     {
-        $this->guardian = Auth::guardian($name);
+        $this->guardian = $name;
+        return $this;
+    }
+
+    /**
+     * Ensures that the id of the logged-in user, provided by a guardian, equals
+     * the id passed to the field "id"-parameter.
+     *
+     * @return $this
+     */
+    public function onlyOwner(string $guardianName = "default"): static
+    {
+        $this->ownerGuardian = $guardianName;
         return $this;
     }
 
@@ -330,10 +349,33 @@ class FieldFactory
      *
      * @throws UnauthenticatedError
      */
-    private function validateRequestWithGuardian(): void
+    private function validateRequestWithGuardian(mixed $id = null): void
     {
-        if($this->guardian !== null
-            && !$this->guardian->validate(app("request")))
+        // check if guardian is set.
+        if ($this->guardian !== null) {
+            // check if guardian exists and request not valid against guardian.
+            if (Auth::guardian($this->guardian) !== null
+                && !Auth::guardian($this->guardian)->validate(app("request"))) {
+
+                // if the guardian cannot verify the request, check if owner guardian is set.
+                // if that is not the case, throw an UnauthenticatedError - but if it is, ensure
+                // that the requestor is the owner of the entry.
+                if ($this->ownerGuardian === null)
+                    throw new UnauthenticatedError("Access denied");
+                else if (Auth::guardian($this->ownerGuardian) !== null
+                    && (
+                        !Auth::guardian($this->ownerGuardian)->validate(app("request"))
+                        || Auth::guardian($this->ownerGuardian)->user()->getIdentifier() !== $id
+                    ))
+                    throw new UnauthenticatedError("Access denied");
+            }
+        } // else check if ownership guardian is set, exists, request is not valid or not the owner
+        else if ($this->ownerGuardian !== null
+            && Auth::guardian($this->ownerGuardian) !== null
+            && (
+                !Auth::guardian($this->ownerGuardian)->validate(app("request"))
+                || Auth::guardian($this->ownerGuardian)->user()->getIdentifier() !== $id
+            ))
             throw new UnauthenticatedError("Access denied");
     }
 }
