@@ -26,7 +26,7 @@ $QueryType = new GraphQLObjectType("Query", "Root Query", function () use($manag
     return [
         $manager->R(\Examples\Models\Job::class)->build(),
         $manager->R(\Examples\Models\Login::class)->build(),
-        $manager->R(\Examples\Models\Benutzer::class)->build(),
+        $manager->R(\Examples\Models\Benutzer::class)->onlyOwner()->build(), // only the owner may read this field
         $manager->R(\Examples\Models\Rolle::class)->build(),
         $manager->A(\Examples\Models\Job::class)->build(),
         $manager->A(\Examples\Models\Login::class)->build(),
@@ -37,18 +37,19 @@ $QueryType = new GraphQLObjectType("Query", "Root Query", function () use($manag
 
 $MutationType = new GraphQLObjectType("Mutation", "Mutation Query", function () use($manager){
     return [
-        $manager->C(\Examples\Models\Job::class)->build(),
-        $manager->C(\Examples\Models\Login::class)->build(),
-        $manager->C(\Examples\Models\Benutzer::class)->build(),
-        $manager->C(\Examples\Models\Rolle::class)->build(),
-        $manager->U(\Examples\Models\Job::class)->build(),
-        $manager->U(\Examples\Models\Login::class)->build(),
-        $manager->U(\Examples\Models\Benutzer::class)->build(),
-        $manager->U(\Examples\Models\Rolle::class)->build(),
-        $manager->D(\Examples\Models\Job::class)->build(),
-        $manager->D(\Examples\Models\Login::class)->build(),
-        $manager->D(\Examples\Models\Benutzer::class)->build(),
-        $manager->D(\Examples\Models\Rolle::class)->build(),
+        // all fields are protected by the default guardian
+        $manager->C(\Examples\Models\Job::class)->guardian()->build(),
+        $manager->C(\Examples\Models\Login::class)->guardian()->build(),
+        $manager->C(\Examples\Models\Benutzer::class)->guardian()->build(),
+        $manager->C(\Examples\Models\Rolle::class)->guardian()->build(),
+        $manager->U(\Examples\Models\Job::class)->guardian()->build(),
+        $manager->U(\Examples\Models\Login::class)->guardian()->build(),
+        $manager->U(\Examples\Models\Benutzer::class)->guardian()->build(),
+        $manager->U(\Examples\Models\Rolle::class)->guardian()->build(),
+        $manager->D(\Examples\Models\Job::class)->guardian()->build(),
+        $manager->D(\Examples\Models\Login::class)->guardian()->build(),
+        $manager->D(\Examples\Models\Benutzer::class)->guardian()->onlyOwner()->build(), // also the owner may delete entries via this field
+        $manager->D(\Examples\Models\Rolle::class)->guardian()->build(),
     ];
 });
 
