@@ -6,7 +6,8 @@
   "require": {
     "php": ">=8.0",
     "curfle/framework": "~0",
-    "joonlabs/php-graphql": "~2"
+    "joonlabs/php-graphql": "~2",
+    "opis/closure": "^3.6"
   },
   "require-dev": {
     "phpunit/phpunit": "^9.3.3"

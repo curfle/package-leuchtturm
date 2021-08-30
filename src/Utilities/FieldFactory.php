@@ -2,6 +2,7 @@
 
 namespace Leuchtturm\Utilities;
 
+use Closure;
 use Curfle\Agreements\Auth\Guardian;
 use Curfle\DAO\Relationships\ManyToManyRelationship;
 use Curfle\DAO\Relationships\OneToManyRelationship;
@@ -16,6 +17,7 @@ use GraphQL\Types\GraphQLNonNull;
 use GraphQL\Types\GraphQLString;
 use GraphQL\Types\GraphQLType;
 use Leuchtturm\LeuchtturmException;
+use Opis\Closure\SerializableClosure;
 use ReflectionException;
 
 class FieldFactory
@@ -76,6 +78,20 @@ class FieldFactory
     private ?string $ownerGuardian = null;
 
     /**
+     * Callback that is executed before the actual execution of the field resolver.
+     *
+     * @var SerializableClosure|null
+     */
+    public ?SerializableClosure $preExec = null;
+
+    /**
+     * Callback that is executed after the actual execution of the field resolver.
+     *
+     * @var SerializableClosure|null
+     */
+    public ?SerializableClosure $postExec = null;
+
+    /**
      * TypeFactory for building type and input type of the GraphQLTypeField.
      *
      * @var TypeFactory
@@ -125,9 +141,9 @@ class FieldFactory
     /**
      * Builds the resolve function for the field.
      *
-     * @return \Closure
+     * @return Closure
      */
-    private function buildResolve(): \Closure
+    private function buildResolve(): Closure
     {
         $this_ = $this;
         $dao = $this->dao;
@@ -138,6 +154,9 @@ class FieldFactory
             FieldFactory::CREATE => function ($parent, $args) use ($dao, $pureName, $hasMany) {
                 // check permissions
                 $this->validateRequestWithGuardian();
+
+                // call preExec callback
+                $this->callPre();
 
                 // store ids to other relations
                 $relationsToAdd = [];
@@ -162,17 +181,32 @@ class FieldFactory
                     }
                 }
 
+                // call postExec callback
+                $this->callPost($entry);
+
                 return $entry;
             },
             FieldFactory::READ => function ($parent, $args) use ($dao) {
                 // check permissions
                 $this->validateRequestWithGuardian($args["id"]);
 
-                return call_user_func("$dao::get", $args["id"]);
+                // call preExec callback
+                $this->callPre();
+
+                // get entry
+                $entry = call_user_func("$dao::get", $args["id"]);
+
+                // call postExec callback
+                $this->callPost($entry);
+
+                return $entry;
             },
             FieldFactory::UPDATE => function ($parent, $args) use ($dao, $pureName, $hasMany) {
                 // check permissions
                 $this->validateRequestWithGuardian($args["id"]);
+
+                // call preExec callback
+                $this->callPre();
 
                 // store ids to other relations
                 $relationsToAdd = [];
@@ -214,21 +248,42 @@ class FieldFactory
                     }
                 }
 
-                return $entry->update();
+                $success = $entry->update();
+
+                // call postExec callback
+                $this->callPost($entry, $success);
+
+                return $success;
             },
             FieldFactory::DELETE => function ($parent, $args) use ($dao, $pureName) {
                 // check permissions
                 $this->validateRequestWithGuardian($args["id"]);
 
+                // call preExec callback
+                $this->callPre();
+
                 // delete entry
                 $entry = call_user_func("$dao::get", $args["id"]);
-                return $entry->delete();
+                $success = $entry->delete();
+
+                // call postExec callback
+                $this->callPost($entry, $success);
+
+                return $success;
             },
             FieldFactory::ALL => function ($parent) use ($dao, $this_) {
                 // check permissions
                 $this->validateRequestWithGuardian();
 
-                return call_user_func("$dao::all");
+                // call preExec callback
+                $this->callPre();
+
+                $entries = call_user_func("$dao::all");
+
+                // call postExec callback
+                $this->callPost($entries);
+
+                return $entries;
             },
         };
     }
@@ -257,6 +312,32 @@ class FieldFactory
                 new GraphQLFieldArgument("id", new GraphQLNonNull(new GraphQLInt()))
             ],
         };
+    }
+
+    /**
+     * Calls the preExec callback.
+     *
+     * @return void
+     */
+    private function callPre()
+    {
+        if ($this->preExec !== null) {
+            $fn = $this->preExec;
+            $fn();
+        }
+    }
+
+    /**
+     * Calls the postExec callback.
+     *
+     * @return void
+     */
+    private function callPost()
+    {
+        if ($this->postExec !== null) {
+            $fn = $this->postExec;
+            $fn();
+        }
     }
 
     /**
@@ -340,6 +421,30 @@ class FieldFactory
     public function onlyOwner(string $guardianName = "default"): static
     {
         $this->ownerGuardian = $guardianName;
+        return $this;
+    }
+
+    /**
+     * Sets the callback that is executed before the actual execution of the field resolver.
+     *
+     * @param Closure $callback
+     * @return $this
+     */
+    public function pre(Closure $callback): static
+    {
+        $this->preExec = new SerializableClosure($callback);
+        return $this;
+    }
+
+    /**
+     * Sets the callback that is executed after the actual execution of the field resolver.
+     *
+     * @param Closure $callback
+     * @return $this
+     */
+    public function post(Closure $callback): static
+    {
+        $this->postExec = new SerializableClosure($callback);
         return $this;
     }
 
