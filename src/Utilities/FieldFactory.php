@@ -82,14 +82,14 @@ class FieldFactory
      *
      * @var SerializableClosure|null
      */
-    public ?SerializableClosure $preExec = null;
+    private ?SerializableClosure $preExec = null;
 
     /**
      * Callback that is executed after the actual execution of the field resolver.
      *
      * @var SerializableClosure|null
      */
-    public ?SerializableClosure $postExec = null;
+    private ?SerializableClosure $postExec = null;
 
     /**
      * TypeFactory for building type and input type of the GraphQLTypeField.
@@ -156,7 +156,7 @@ class FieldFactory
                 $this->validateRequestWithGuardian();
 
                 // call preExec callback
-                $this->callPre();
+                $this->callPre($args);
 
                 // store ids to other relations
                 $relationsToAdd = [];
@@ -191,7 +191,7 @@ class FieldFactory
                 $this->validateRequestWithGuardian($args["id"]);
 
                 // call preExec callback
-                $this->callPre();
+                $this->callPre($args);
 
                 // get entry
                 $entry = call_user_func("$dao::get", $args["id"]);
@@ -206,7 +206,7 @@ class FieldFactory
                 $this->validateRequestWithGuardian($args["id"]);
 
                 // call preExec callback
-                $this->callPre();
+                $this->callPre($args);
 
                 // store ids to other relations
                 $relationsToAdd = [];
@@ -260,7 +260,7 @@ class FieldFactory
                 $this->validateRequestWithGuardian($args["id"]);
 
                 // call preExec callback
-                $this->callPre();
+                $this->callPre($args);
 
                 // delete entry
                 $entry = call_user_func("$dao::get", $args["id"]);
@@ -319,11 +319,11 @@ class FieldFactory
      *
      * @return void
      */
-    private function callPre()
+    public function callPre()
     {
         if ($this->preExec !== null) {
             $fn = $this->preExec;
-            $fn();
+            return $fn(...func_get_args());
         }
     }
 
@@ -332,11 +332,11 @@ class FieldFactory
      *
      * @return void
      */
-    private function callPost()
+    public function callPost()
     {
         if ($this->postExec !== null) {
             $fn = $this->postExec;
-            $fn();
+            return $fn(...func_get_args());
         }
     }
 

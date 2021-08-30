@@ -34,7 +34,6 @@ class FieldFactoryTest extends TestCase
 
         $fieldClone = unserialize(serialize($field));
 
-        $fn = $fieldClone->preExec;
-        $this->assertEquals(42, $fn());
+        $this->assertEquals(42, $fieldClone->callPre());
     }
 }
