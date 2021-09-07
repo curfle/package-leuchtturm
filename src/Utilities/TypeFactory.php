@@ -250,6 +250,7 @@ class TypeFactory
         // because those fields can be directly filled with a scalar value and need no extra input type like
         // a hasMany relationship does with a GraphQLList(GraphQLInt).
         $fields = array_merge($fields, $this->buildFieldsFromProperty($properties, true));
+        $fields = array_merge($fields, $this->buildinputFieldsFromHasOne());
         $fields = array_merge($fields, $this->buildInputFieldsFromHasMany());
 
         return $this->graphQLInputType;
@@ -284,6 +285,24 @@ class TypeFactory
             $fields[] = new GraphQLTypeField(
                 $fieldname,
                 new GraphQLNonNull(new GraphQLList($this->manager->build($typename))),
+            );
+        }
+
+        return $fields;
+    }
+
+    /**
+     *
+     */
+    private function buildinputFieldsFromHasOne(): array
+    {
+        $fields = [];
+        $manager = $this->manager;
+
+        foreach ($this->hasOne as $fieldname => $typename) {
+            $fields[] = new GraphQLTypeField(
+                $fieldname,
+                new GraphQLNonNull(new GraphQLInt()),
             );
         }
 
@@ -457,6 +476,4 @@ class TypeFactory
     {
         return $this->hasOne;
     }
-
-
 }

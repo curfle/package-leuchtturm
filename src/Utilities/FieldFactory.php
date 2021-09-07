@@ -5,7 +5,9 @@ namespace Leuchtturm\Utilities;
 use Closure;
 use Curfle\Agreements\Auth\Guardian;
 use Curfle\DAO\Relationships\ManyToManyRelationship;
+use Curfle\DAO\Relationships\ManyToOneRelationship;
 use Curfle\DAO\Relationships\OneToManyRelationship;
+use Curfle\DAO\Relationships\OneToOneRelationship;
 use Curfle\Support\Facades\Auth;
 use GraphQL\Arguments\GraphQLFieldArgument;
 use GraphQL\Errors\UnauthenticatedError;
@@ -151,7 +153,7 @@ class FieldFactory
         $hasOne = $this->typeFactory->getHasOne();
         $hasMany = $this->typeFactory->getHasMany();
         return match ($this->operation) {
-            FieldFactory::CREATE => function ($parent, $args) use ($dao, $pureName, $hasMany) {
+            FieldFactory::CREATE => function ($parent, $args) use ($dao, $pureName, $hasMany, $hasOne) {
                 // check permissions
                 $this->validateRequestWithGuardian();
 
@@ -159,19 +161,28 @@ class FieldFactory
                 $this->callPre($args);
 
                 // store ids to other relations
-                $relationsToAdd = [];
+                $relationsToAddMany = [];
                 foreach ($hasMany as $field => $value) {
-                    if (array_key_exists($field, $args)) {
-                        $relationsToAdd[$field] = $args[$field];
-                        unset($args[$field]);
+                    if (array_key_exists($field, $args[$pureName])) {
+                        $relationsToAddMany[$field] = $args[$pureName][$field];
+                        unset($args[$pureName][$field]);
+                    }
+                }
+                // add one to one or one to many relations as direct fieldsin args
+                foreach ($hasOne as $field => $value) {
+                    if (array_key_exists($field, $args[$pureName])) {
+                        $args[$pureName][$field."_id"] = $args[$pureName][$field];
+                        unset($args[$pureName][$field]);
                     }
                 }
 
                 // create the actual entry
                 $entry = call_user_func("$dao::create", $args[$pureName]);
 
-                // add relation
-                foreach ($relationsToAdd as $argument => $ids) {
+                // add relations
+                foreach ($relationsToAddMany as $argument => $ids) {
+                    if ($ids === null)
+                        continue;
                     $relationship = $entry->{$argument}();
                     foreach ($ids as $id) {
                         if ($relationship instanceof OneToManyRelationship)
