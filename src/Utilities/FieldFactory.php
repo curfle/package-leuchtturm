@@ -176,6 +176,12 @@ class FieldFactory
                     }
                 }
 
+                // remove null values
+                foreach($args[$pureName] as $key => $value){
+                    if($value === null)
+                        unset($args[$pureName][$key]);
+                }
+
                 // create the actual entry
                 $entry = call_user_func("$dao::create", $args[$pureName]);
 
