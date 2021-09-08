@@ -171,14 +171,14 @@ class FieldFactory
                 // add one to one or one to many relations as direct fieldsin args
                 foreach ($hasOne as $field => $value) {
                     if (array_key_exists($field, $args[$pureName])) {
-                        $args[$pureName][$field."_id"] = $args[$pureName][$field];
+                        $args[$pureName][$field . "_id"] = $args[$pureName][$field];
                         unset($args[$pureName][$field]);
                     }
                 }
 
                 // remove null values
-                foreach($args[$pureName] as $key => $value){
-                    if($value === null)
+                foreach ($args[$pureName] as $key => $value) {
+                    if ($value === null)
                         unset($args[$pureName][$key]);
                 }
 
@@ -218,7 +218,7 @@ class FieldFactory
 
                 return $entry;
             },
-            FieldFactory::UPDATE => function ($parent, $args) use ($dao, $pureName, $hasMany) {
+            FieldFactory::UPDATE => function ($parent, $args) use ($dao, $pureName, $hasMany, $hasOne) {
                 // check permissions
                 $this->validateRequestWithGuardian($args["id"]);
 
@@ -226,11 +226,18 @@ class FieldFactory
                 $this->callPre($args);
 
                 // store ids to other relations
-                $relationsToAdd = [];
+                $relationsToAddMany = [];
+                $relationsToAddOne = [];
                 foreach ($hasMany as $field => $value) {
-                    if (array_key_exists($field, $args)) {
-                        $relationsToAdd[$field] = $args[$field];
-                        unset($args[$field]);
+                    if (array_key_exists($field, $args[$pureName])) {
+                        $relationsToAddMany[$field] = $args[$pureName][$field];
+                        unset($args[$pureName][$field]);
+                    }
+                }
+                foreach ($hasOne as $field => $value) {
+                    if (array_key_exists($field, $args[$pureName])) {
+                        $relationsToAddOne[$field] = $args[$pureName][$field];
+                        unset($args[$pureName][$field]);
                     }
                 }
 
@@ -239,9 +246,11 @@ class FieldFactory
                 foreach ($args[$pureName] as $property => $value)
                     $entry->{$property} = $value;
 
-
                 // update relations
-                foreach ($relationsToAdd as $argument => $ids) {
+                foreach ($relationsToAddMany as $argument => $ids) {
+                    if($ids === null)
+                        continue;
+
                     $relationship = $entry->{$argument}();
 
                     // remove old entries
@@ -263,6 +272,19 @@ class FieldFactory
                         if ($relationship instanceof ManyToManyRelationship)
                             $relationship->attach(call_user_func("{$hasMany[$argument]}::get", $id));
                     }
+                }
+
+                foreach ($relationsToAddOne as $argument => $id) {
+                    if($id === null)
+                        continue;
+
+                    $relationship = $entry->{$argument}();
+
+                    // connect new entries
+                    if ($relationship instanceof OneToOneRelationship)
+                        $relationship->set(call_user_func("{$hasOne[$argument]}::get", $id));
+                    if ($relationship instanceof ManyToOneRelationship)
+                        $relationship->associate(call_user_func("{$hasOne[$argument]}::get", $id));
                 }
 
                 $success = $entry->update();
