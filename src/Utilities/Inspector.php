@@ -105,7 +105,7 @@ class Inspector
     {
         foreach ($properties as &$property) {
             $property["isArray"] = str_ends_with($property["type"], "[]");
-            if($property["isArray"]){
+            if ($property["isArray"]) {
                 $property["type"] = substr($property["type"], 0, -2);
             }
         }
@@ -122,8 +122,11 @@ class Inspector
     private static function fullQualifyProperties(array $properties, string $namespace): array
     {
         foreach ($properties as &$property) {
-            if(!str_contains($property["type"], "\\")){
-                $property["type"] = $namespace."\\".$property["type"];
+            if (!str_contains($property["type"], "\\")) {
+                if (str_starts_with($property["type"], "?"))
+                    $property["type"] = "?" . $namespace . "\\" . ltrim($property["type"], "?");
+                else
+                    $property["type"] = $namespace . "\\" . $property["type"];
             }
         }
         return $properties;
@@ -142,8 +145,7 @@ class Inspector
         $textProperties = [];
 
         foreach ($lines as $line) {
-            $regex = '/ ?\*? ?@property(-read|-write)? ((\\\\?([A-Z]|[a-z]|_)+)+(\[\])?) (\$([A-Z]|[a-z]|_)+)/m';
-            $str = '@property Benutzer $user';
+            $regex = '/ ?\*? ?@property(-read|-write)? (\??(\\\\?([A-Z]|[a-z]|_)+)+(\[\])?) (\$([A-Z]|[a-z]|_)+)/m';
 
             preg_match_all($regex, $line, $matches, PREG_PATTERN_ORDER, 0);
 

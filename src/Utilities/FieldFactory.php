@@ -192,9 +192,9 @@ class FieldFactory
                     $relationship = $entry->{$argument}();
                     foreach ($ids as $id) {
                         if ($relationship instanceof OneToManyRelationship)
-                            $relationship->associate(call_user_func("{$hasMany[$argument]}::get", $id));
+                            $relationship->associate(call_user_func("{$hasMany[$argument]->getType()}::get", $id));
                         if ($relationship instanceof ManyToManyRelationship)
-                            $relationship->attach(call_user_func("{$hasMany[$argument]}::get", $id));
+                            $relationship->attach(call_user_func("{$hasMany[$argument]->getType()}::get", $id));
                     }
                 }
 
@@ -267,10 +267,10 @@ class FieldFactory
                     // connect new entries
                     foreach ($ids as $id) {
                         if ($relationship instanceof OneToManyRelationship) {
-                            $relationship->associate(call_user_func("{$hasMany[$argument]}::get", $id));
+                            $relationship->associate(call_user_func("{$hasMany[$argument]->getType()}::get", $id));
                         }
                         if ($relationship instanceof ManyToManyRelationship)
-                            $relationship->attach(call_user_func("{$hasMany[$argument]}::get", $id));
+                            $relationship->attach(call_user_func("{$hasMany[$argument]->getType()}::get", $id));
                     }
                 }
 
@@ -282,9 +282,9 @@ class FieldFactory
 
                     // connect new entries
                     if ($relationship instanceof OneToOneRelationship)
-                        $relationship->set(call_user_func("{$hasOne[$argument]}::get", $id));
+                        $relationship->set(call_user_func("{$hasOne[$argument]->getType()}::get", $id));
                     if ($relationship instanceof ManyToOneRelationship)
-                        $relationship->associate(call_user_func("{$hasOne[$argument]}::get", $id));
+                        $relationship->associate(call_user_func("{$hasOne[$argument]->getType()}::get", $id));
                 }
 
                 $success = $entry->update();

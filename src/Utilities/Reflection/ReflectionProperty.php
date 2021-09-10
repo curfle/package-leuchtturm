@@ -42,7 +42,7 @@ class ReflectionProperty
      */
     public function getType(): string
     {
-        return $this->type;
+        return $this->isNullable() ? ltrim($this->type, "?") : $this->type;
     }
 
     /**

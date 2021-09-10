@@ -152,11 +152,14 @@ class TypeFactory
      * Adds a field with a GraphQLList of a TypeFactory.
      *
      * @param string $fieldname
-     * @param string $oftype
+     * @param string|ReflectionProperty $oftype
      * @return TypeFactory
      */
-    public function hasMany(string $fieldname, string $oftype): static
+    public function hasMany(string $fieldname, string|ReflectionProperty $oftype): static
     {
+        if (is_string($oftype))
+            $oftype = (new ReflectionProperty())->setType($oftype)->setName($fieldname);
+
         $this->hasMany[$fieldname] = $oftype;
         return $this;
     }
@@ -165,11 +168,14 @@ class TypeFactory
      * Adds a field of a TypeFactory.
      *
      * @param string $fieldname
-     * @param string $oftype
+     * @param string|ReflectionProperty $oftype
      * @return TypeFactory
      */
-    public function hasOne(string $fieldname, string $oftype): static
+    public function hasOne(string $fieldname, string|ReflectionProperty $oftype): static
     {
+        if (is_string($oftype))
+            $oftype = (new ReflectionProperty())->setType($oftype)->setName($fieldname);
+
         $this->hasOne[$fieldname] = $oftype;
         return $this;
     }
@@ -264,11 +270,12 @@ class TypeFactory
     private function collectFieldsFromClassDoc()
     {
         $properties = Inspector::getPropertiesFromClassDoc($this->dao);
+
         foreach ($properties as $property) {
             if ($property->isArrayType())
-                $this->hasMany[$property->getName()] = $property->getType();
+                $this->hasMany[$property->getName()] = $property;
             else
-                $this->hasOne[$property->getName()] = $property->getType();
+                $this->hasOne[$property->getName()] = $property;
         }
     }
 
@@ -281,10 +288,10 @@ class TypeFactory
         $fields = [];
         $manager = $this->manager;
 
-        foreach ($this->hasMany as $fieldname => $typename) {
+        foreach ($this->hasMany as $fieldname => $property) {
             $fields[] = new GraphQLTypeField(
                 $fieldname,
-                new GraphQLNonNull(new GraphQLList($this->manager->build($typename))),
+                new GraphQLNonNull(new GraphQLList($this->manager->build($property->getType()))),
             );
         }
 
@@ -299,10 +306,10 @@ class TypeFactory
         $fields = [];
         $manager = $this->manager;
 
-        foreach ($this->hasOne as $fieldname => $typename) {
+        foreach ($this->hasOne as $fieldname => $property) {
             $fields[] = new GraphQLTypeField(
                 $fieldname,
-                new GraphQLNonNull(new GraphQLInt()),
+                $property->isNullable() ? new GraphQLInt() : new GraphQLNonNull(new GraphQLInt()),
             );
         }
 
@@ -317,7 +324,7 @@ class TypeFactory
         $fields = [];
         $manager = $this->manager;
 
-        foreach ($this->hasMany as $fieldname => $typename) {
+        foreach ($this->hasMany as $fieldname => $property) {
             $fields[] = new GraphQLTypeField(
                 $fieldname,
                 new GraphQLList(new GraphQLNonNull(new GraphQLInt())),
@@ -340,11 +347,14 @@ class TypeFactory
 
         $properties = $this->getProperties();
 
-        foreach ($this->hasOne as $fieldname => $dao) {
+        foreach ($this->hasOne as $fieldname => $property) {
+            // get dao from property
+            $dao = $property->getType();
+
             // check if fk exists and is non-null
             $isNonNull = false;
             $potentialFK = "{$fieldname}_id";
-            if (array_key_exists($potentialFK, $properties) && !$properties[$potentialFK]->isNullable())
+            if (array_key_exists($potentialFK, $properties) && !$properties[$potentialFK]->isNullable() && $property->isNullable())
                 $isNonNull = true;
 
             $fields[] = new GraphQLTypeField(
@@ -377,7 +387,7 @@ class TypeFactory
 
         foreach ($properties as $property) {
             // omit id on input type
-            if($forInputType && $property->getName() === "id")
+            if ($forInputType && $property->getName() === "id")
                 continue;
 
             // check if property is allowed and not in $hasMany or $hasOne
@@ -425,16 +435,14 @@ class TypeFactory
             || $property->getType() === "?array")
             throw new LeuchtturmException("The property {$property->getName()} is of type array which correlates to a GraphQLList, which is not supported in auto-generation.");
 
-        return match (strtolower($property->getType())) {
-            "string" => new GraphQLNonNull(new GraphQLString()),
-            "?string" => new GraphQLString(),
-            "int" => new GraphQLNonNull(new GraphQLInt()),
-            "?int" => new GraphQLInt(),
-            "float" => new GraphQLNonNull(new GraphQLFloat()),
-            "?float" => new GraphQLFloat(),
-            "bool" => new GraphQLNonNull(new GraphQLBoolean()),
-            "?bool" => new GraphQLBoolean(),
+        $type = match (strtolower($property->getType())) {
+            "string" => new GraphQLString(),
+            "int" => new GraphQLInt(),
+            "float" => new GraphQLFloat(),
+            "bool" => new GraphQLBoolean(),
         };
+
+        return $property->isNullable() ? new GraphQLNonNull($type) : $type;
     }
 
     /**
