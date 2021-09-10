@@ -289,9 +289,12 @@ class TypeFactory
         $manager = $this->manager;
 
         foreach ($this->hasMany as $fieldname => $property) {
+            $innerType = $this->manager->build($property->getType());
             $fields[] = new GraphQLTypeField(
                 $fieldname,
-                new GraphQLNonNull(new GraphQLList($this->manager->build($property->getType()))),
+                new GraphQLNonNull(new GraphQLList(
+                    $property->isNullable() ? $innerType : new GraphQLNonNull($innerType)
+                )),
             );
         }
 
@@ -351,17 +354,11 @@ class TypeFactory
             // get dao from property
             $dao = $property->getType();
 
-            // check if fk exists and is non-null
-            $isNonNull = false;
-            $potentialFK = "{$fieldname}_id";
-            if (array_key_exists($potentialFK, $properties) && !$properties[$potentialFK]->isNullable() && $property->isNullable())
-                $isNonNull = true;
-
             $fields[] = new GraphQLTypeField(
                 $fieldname,
-                $isNonNull
-                    ? new GraphQLNonNull($this->manager->build($dao))
-                    : $this->manager->build($dao),
+                $property->isNullable()
+                    ? $this->manager->build($dao)
+                    : new GraphQLNonNull($this->manager->build($dao)),
                 resolve: function ($parent) use ($manager, $fieldname, $dao) {
                     $daoClass = $manager->factory($dao)->getDAO();
                     $property = "{$fieldname}_id";
@@ -431,8 +428,7 @@ class TypeFactory
     private function buildTypeFromProperty(ReflectionProperty $property, bool $ignoreMissingDefaultValue = false): GraphQLType
     {
         // handle arrays
-        if ($property->getType() === "array"
-            || $property->getType() === "?array")
+        if ($property->getType() === "array")
             throw new LeuchtturmException("The property {$property->getName()} is of type array which correlates to a GraphQLList, which is not supported in auto-generation.");
 
         $type = match (strtolower($property->getType())) {
@@ -442,7 +438,7 @@ class TypeFactory
             "bool" => new GraphQLBoolean(),
         };
 
-        return $property->isNullable() ? new GraphQLNonNull($type) : $type;
+        return $property->isNullable() ? $type : new GraphQLNonNull($type);
     }
 
     /**
