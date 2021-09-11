@@ -283,28 +283,6 @@ class TypeFactory
 
     /**
      *
-     * @throws ReflectionException|LeuchtturmException
-     */
-    private function buildFieldsFromHasMany(): array
-    {
-        $fields = [];
-        $manager = $this->manager;
-
-        foreach ($this->hasMany as $fieldname => $property) {
-            $innerType = $this->manager->build($property->getType());
-            $fields[] = new GraphQLTypeField(
-                $fieldname,
-                new GraphQLNonNull(new GraphQLList(
-                    $property->isNullable() ? $innerType : new GraphQLNonNull($innerType)
-                )),
-            );
-        }
-
-        return $fields;
-    }
-
-    /**
-     *
      */
     private function buildinputFieldsFromHasOne(): array
     {
@@ -330,19 +308,9 @@ class TypeFactory
         $manager = $this->manager;
 
         foreach ($this->hasMany as $fieldname => $property) {
-            // get the guardians
-            $guardians = $property->getGuardians();
-
-            // build the field
             $fields[] = new GraphQLTypeField(
                 $fieldname,
                 new GraphQLList(new GraphQLNonNull(new GraphQLInt())),
-                resolve: function($parent) use($guardians){
-                    // protect with guards
-                    $this->validateRequestWithGuardians($guardians);
-
-                    return $parent->{$fieldname};
-                }
             );
         }
 
@@ -373,12 +341,45 @@ class TypeFactory
                     ? $this->manager->build($dao)
                     : new GraphQLNonNull($this->manager->build($dao)),
                 resolve: function ($parent) use ($manager, $fieldname, $dao, $guardians) {
+
                     // protect with guards
                     $this->validateRequestWithGuardians($guardians);
 
                     $daoClass = $manager->factory($dao)->getDAO();
                     $property = "{$fieldname}_id";
                     return call_user_func("$daoClass::get", $parent->{$property});
+                }
+            );
+        }
+
+        return $fields;
+    }
+
+    /**
+     *
+     * @throws ReflectionException|LeuchtturmException
+     */
+    private function buildFieldsFromHasMany(): array
+    {
+        $fields = [];
+        $manager = $this->manager;
+
+        foreach ($this->hasMany as $fieldname => $property) {
+
+            // get the guardians and inner type
+            $guardians = $property->getGuardians();
+            $innerType = $this->manager->build($property->getType());
+
+            $fields[] = new GraphQLTypeField(
+                $fieldname,
+                new GraphQLNonNull(new GraphQLList(
+                    $property->isNullable() ? $innerType : new GraphQLNonNull($innerType)
+                )),
+                resolve: function($parent) use($guardians, $fieldname){
+                    // protect with guards
+                    $this->validateRequestWithGuardians($guardians);
+
+                    return $parent->{$fieldname};
                 }
             );
         }
