@@ -100,6 +100,7 @@ class TypeFactoryTest extends TestCase
             $graphQLObjectTypeUser->getFields()["logins"]
                 ->getType() // GraphQLNonNull
                 ->getInnerType() // GraphQLList
+                ->getInnerType() // GraphQLNonNull
                 ->getInnerType() // Benutzer-Type
         );
     }

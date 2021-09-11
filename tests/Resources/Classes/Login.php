@@ -8,6 +8,7 @@ use Curfle\DAO\Relationships\OneToOneRelationship;
 
 /**
  * @property-read User $user
+ * @protect $user userguard
  */
 class Login extends Model
 {

@@ -8,6 +8,7 @@ class ReflectionProperty
     private string $type;
     private bool $hasDefaultValue;
     private mixed $defaultValue;
+    private array $guardians = [];
     private bool $isArrayType = false;
 
 
@@ -107,5 +108,39 @@ class ReflectionProperty
     {
         $this->isArrayType = $isArrayType;
         return $this;
+    }
+
+    /**
+     * Adds a guardian that protects the property.
+     *
+     * @param string|array $guardian
+     * @return $this
+     */
+    public function addGuardian(string|array $guardian): static
+    {
+        if(is_string($guardian))
+            $guardian = [$guardian];
+        $this->guardians = $guardian;
+        return $this;
+    }
+
+    /**
+     * Returns all guardians of the property.
+     *
+     * @return array
+     */
+    public function getGuardians(): array
+    {
+        return $this->guardians;
+    }
+
+    /**
+     * Returns whether the property has guardians.
+     *
+     * @return bool
+     */
+    public function hasGuardians(): bool
+    {
+        return !empty($this->guardians);
     }
 }

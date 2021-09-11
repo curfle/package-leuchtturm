@@ -2,7 +2,9 @@
 
 namespace Leuchtturm\Utilities;
 
+use Curfle\Support\Facades\Auth;
 use GraphQL\Arguments\GraphQLFieldArgument;
+use GraphQL\Errors\UnauthenticatedError;
 use GraphQL\Fields\GraphQLTypeField;
 use GraphQL\Types\GraphQLBoolean;
 use GraphQL\Types\GraphQLFloat;
@@ -328,9 +330,19 @@ class TypeFactory
         $manager = $this->manager;
 
         foreach ($this->hasMany as $fieldname => $property) {
+            // get the guardians
+            $guardians = $property->getGuardians();
+
+            // build the field
             $fields[] = new GraphQLTypeField(
                 $fieldname,
                 new GraphQLList(new GraphQLNonNull(new GraphQLInt())),
+                resolve: function($parent) use($guardians){
+                    // protect with guards
+                    $this->validateRequestWithGuardians($guardians);
+
+                    return $parent->{$fieldname};
+                }
             );
         }
 
@@ -353,13 +365,17 @@ class TypeFactory
         foreach ($this->hasOne as $fieldname => $property) {
             // get dao from property
             $dao = $property->getType();
+            $guardians = $property->getGuardians();
 
             $fields[] = new GraphQLTypeField(
                 $fieldname,
                 $property->isNullable()
                     ? $this->manager->build($dao)
                     : new GraphQLNonNull($this->manager->build($dao)),
-                resolve: function ($parent) use ($manager, $fieldname, $dao) {
+                resolve: function ($parent) use ($manager, $fieldname, $dao, $guardians) {
+                    // protect with guards
+                    $this->validateRequestWithGuardians($guardians);
+
                     $daoClass = $manager->factory($dao)->getDAO();
                     $property = "{$fieldname}_id";
                     return call_user_func("$daoClass::get", $parent->{$property});
@@ -368,6 +384,29 @@ class TypeFactory
         }
 
         return $fields;
+    }
+
+    /**
+     * Validates the current request with the guardians.
+     *
+     * @param array $guardians
+     * @throws UnauthenticatedError
+     */
+    private function validateRequestWithGuardians(array $guardians)
+    {
+        // if no guardians available -> return
+        if(empty($guardians))
+            return;
+
+        // check if any guardian can validate the request
+        foreach($guardians as $guardian){
+            if (Auth::guardian($guardian) !== null
+                && Auth::guardian($guardian)->validate(app("request")))
+                return;
+        }
+
+        // else throw unauthenticated error
+        throw new UnauthenticatedError("Access denied");
     }
 
     /**

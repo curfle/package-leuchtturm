@@ -91,7 +91,8 @@ class Inspector
                 ->setName($property["name"])
                 ->setType($property["type"])
                 ->setHasDefaultValue(false)
-                ->setIsArrayType($property["isArray"]);
+                ->setIsArrayType($property["isArray"])
+                ->addGuardian($property["guardians"]);
         }, $properties);
     }
 
@@ -122,6 +123,7 @@ class Inspector
     private static function fullQualifyProperties(array $properties, string $namespace): array
     {
         foreach ($properties as &$property) {
+            // qualify type
             if (!str_contains($property["type"], "\\")) {
                 if (str_starts_with($property["type"], "?"))
                     $property["type"] = "?" . $namespace . "\\" . ltrim($property["type"], "?");
@@ -144,6 +146,7 @@ class Inspector
 
         $textProperties = [];
 
+        // match properties
         foreach ($lines as $line) {
             $regex = '/ ?\*? ?@property(-read|-write)? (\??(\\\\?([A-Z]|[a-z]|_)+)+(\[\])?) (\$([A-Z]|[a-z]|_)+)/m';
 
@@ -154,7 +157,23 @@ class Inspector
                     "propertyKind" => substr($matches[1][0], 1),
                     "type" => $matches[2][0],
                     "name" => substr($matches[6][0], 1),
+                    "guardians" => []
                 ];
+            }
+        }
+
+        // match guardians
+        foreach ($lines as $line) {
+            $regex = '/ ?\*? ?@protect (\$([A-Z]|[a-z]|_)+) (\??(\\\\?([A-Z]|[a-z]|_)+)+)/m';
+
+            preg_match_all($regex, $line, $matches, PREG_PATTERN_ORDER, 0);
+
+            if (!empty($matches[0])) {
+                $name = substr($matches[1][0], 1);
+                foreach($textProperties as &$property){
+                    if($property["name"] === $name)
+                        $property["guardians"][] = $matches[3][0];
+                }
             }
         }
 
