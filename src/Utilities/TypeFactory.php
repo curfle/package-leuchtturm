@@ -290,10 +290,13 @@ class TypeFactory
         $manager = $this->manager;
 
         foreach ($this->hasOne as $fieldname => $property) {
-            $fields[] = new GraphQLTypeField(
-                $fieldname,
-                $property->isNullable() ? new GraphQLInt() : new GraphQLNonNull(new GraphQLInt()),
-            );
+            // add property if writable
+            if($property->isWritable()){
+                $fields[] = new GraphQLTypeField(
+                    $fieldname,
+                    $property->isNullable() ? new GraphQLInt() : new GraphQLNonNull(new GraphQLInt()),
+                );
+            }
         }
 
         return $fields;
@@ -308,10 +311,13 @@ class TypeFactory
         $manager = $this->manager;
 
         foreach ($this->hasMany as $fieldname => $property) {
-            $fields[] = new GraphQLTypeField(
-                $fieldname,
-                new GraphQLList(new GraphQLNonNull(new GraphQLInt())),
-            );
+            // add property if writable
+            if($property->isWritable()) {
+                $fields[] = new GraphQLTypeField(
+                    $fieldname,
+                    new GraphQLList(new GraphQLNonNull(new GraphQLInt())),
+                );
+            }
         }
 
         return $fields;
@@ -331,25 +337,28 @@ class TypeFactory
         $properties = $this->getProperties();
 
         foreach ($this->hasOne as $fieldname => $property) {
-            // get dao from property
-            $dao = $property->getType();
-            $guardians = $property->getGuardians();
+            // add property if readable
+            if($property->isReadable()) {
+                // get dao from property
+                $dao = $property->getType();
+                $guardians = $property->getGuardians();
 
-            $fields[] = new GraphQLTypeField(
-                $fieldname,
-                $property->isNullable()
-                    ? $this->manager->build($dao)
-                    : new GraphQLNonNull($this->manager->build($dao)),
-                resolve: function ($parent) use ($manager, $fieldname, $dao, $guardians) {
+                $fields[] = new GraphQLTypeField(
+                    $fieldname,
+                    $property->isNullable()
+                        ? $this->manager->build($dao)
+                        : new GraphQLNonNull($this->manager->build($dao)),
+                    resolve: function ($parent) use ($manager, $fieldname, $dao, $guardians) {
 
-                    // protect with guards
-                    $this->validateRequestWithGuardians($guardians);
+                        // protect with guards
+                        $this->validateRequestWithGuardians($guardians);
 
-                    $daoClass = $manager->factory($dao)->getDAO();
-                    $property = "{$fieldname}_id";
-                    return call_user_func("$daoClass::get", $parent->{$property});
-                }
-            );
+                        $daoClass = $manager->factory($dao)->getDAO();
+                        $property = "{$fieldname}_id";
+                        return call_user_func("$daoClass::get", $parent->{$property});
+                    }
+                );
+            }
         }
 
         return $fields;
@@ -365,23 +374,25 @@ class TypeFactory
         $manager = $this->manager;
 
         foreach ($this->hasMany as $fieldname => $property) {
+            // add property if readable
+            if($property->isReadable()) {
+                // get the guardians and inner type
+                $guardians = $property->getGuardians();
+                $innerType = $this->manager->build($property->getType());
 
-            // get the guardians and inner type
-            $guardians = $property->getGuardians();
-            $innerType = $this->manager->build($property->getType());
+                $fields[] = new GraphQLTypeField(
+                    $fieldname,
+                    new GraphQLNonNull(new GraphQLList(
+                        $property->isNullable() ? $innerType : new GraphQLNonNull($innerType)
+                    )),
+                    resolve: function ($parent) use ($guardians, $fieldname) {
+                        // protect with guards
+                        $this->validateRequestWithGuardians($guardians);
 
-            $fields[] = new GraphQLTypeField(
-                $fieldname,
-                new GraphQLNonNull(new GraphQLList(
-                    $property->isNullable() ? $innerType : new GraphQLNonNull($innerType)
-                )),
-                resolve: function($parent) use($guardians, $fieldname){
-                    // protect with guards
-                    $this->validateRequestWithGuardians($guardians);
-
-                    return $parent->{$fieldname};
-                }
-            );
+                        return $parent->{$fieldname};
+                    }
+                );
+            }
         }
 
         return $fields;

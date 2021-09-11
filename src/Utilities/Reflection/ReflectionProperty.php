@@ -4,11 +4,57 @@ namespace Leuchtturm\Utilities\Reflection;
 
 class ReflectionProperty
 {
+    const KIND_READ = "READ";
+    const KIND_WRITE = "WRITE";
+    const KIND_DEFAULT = "DEFAULT";
+
+    /**
+     * Name of the property.
+     *
+     * @var string
+     */
     private string $name;
+
+    /**
+     * Type of the property.
+     *
+     * @var string
+     */
     private string $type;
+
+    /**
+     * Kind of the property (default, read or write).
+     *
+     * @var string
+     */
+    private string $kind = ReflectionProperty::KIND_DEFAULT;
+
+    /**
+     * Determines wether the property has a default value.
+     *
+     * @var bool
+     */
     private bool $hasDefaultValue;
+
+    /**
+     * The property's default value.
+     *
+     * @var mixed
+     */
     private mixed $defaultValue;
+
+    /**
+     * Guardians that protect the property.
+     *
+     * @var array
+     */
     private array $guardians = [];
+
+    /**
+     * Determines wether the property is an array type.
+     *
+     * @var bool
+     */
     private bool $isArrayType = false;
 
 
@@ -118,7 +164,7 @@ class ReflectionProperty
      */
     public function addGuardian(string|array $guardian): static
     {
-        if(is_string($guardian))
+        if (is_string($guardian))
             $guardian = [$guardian];
         $this->guardians = $guardian;
         return $this;
@@ -142,5 +188,53 @@ class ReflectionProperty
     public function hasGuardians(): bool
     {
         return !empty($this->guardians);
+    }
+
+    /**
+     * Sets the property kind.
+     *
+     * @param string $kind
+     * @return ReflectionProperty
+     */
+    public function setKind(string $kind): ReflectionProperty
+    {
+        $this->kind = $kind;
+        return $this;
+    }
+
+    /**
+     * Returns the property kind.
+     *
+     * @return string
+     */
+    public function getKind(): string
+    {
+        return $this->kind;
+    }
+
+    /**
+     * Returns wether the property is writable.
+     *
+     * @return bool
+     */
+    public function isWritable(): bool
+    {
+        return match ($this->getKind()) {
+            ReflectionProperty::KIND_READ => false,
+            default => true
+        };
+    }
+
+    /**
+     * Returns wether the property is readable.
+     *
+     * @return bool
+     */
+    public function isReadable(): bool
+    {
+        return match ($this->getKind()) {
+            ReflectionProperty::KIND_WRITE => false,
+            default => true
+        };
     }
 }

@@ -90,6 +90,7 @@ class Inspector
             return (new ReflectionProperty())
                 ->setName($property["name"])
                 ->setType($property["type"])
+                ->setKind($property["kind"])
                 ->setHasDefaultValue(false)
                 ->setIsArrayType($property["isArray"])
                 ->addGuardian($property["guardians"]);
@@ -153,8 +154,14 @@ class Inspector
             preg_match_all($regex, $line, $matches, PREG_PATTERN_ORDER, 0);
 
             if (!empty($matches[0])) {
+                $kind = match($matches[1][0]){
+                    "-read" => ReflectionProperty::KIND_READ,
+                    "-write" => ReflectionProperty::KIND_WRITE,
+                    default => ReflectionProperty::KIND_DEFAULT
+                };
+
                 $textProperties[] = [
-                    "propertyKind" => substr($matches[1][0], 1),
+                    "kind" => $kind,
                     "type" => $matches[2][0],
                     "name" => substr($matches[6][0], 1),
                     "guardians" => []
