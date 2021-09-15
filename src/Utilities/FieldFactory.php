@@ -509,7 +509,7 @@ class FieldFactory
                 else if (Auth::guardian($this->ownerGuardian) !== null
                     && (
                         !Auth::guardian($this->ownerGuardian)->validate(app("request"))
-                        || Auth::guardian($this->ownerGuardian)->user()->getIdentifier() !== $id
+                        || Auth::guardian($this->ownerGuardian)->user()?->getIdentifier() !== $id
                     ))
                     throw new UnauthenticatedError("Access denied");
             }
@@ -518,7 +518,7 @@ class FieldFactory
             && Auth::guardian($this->ownerGuardian) !== null
             && (
                 !Auth::guardian($this->ownerGuardian)->validate(app("request"))
-                || Auth::guardian($this->ownerGuardian)->user()->getIdentifier() !== $id
+                || Auth::guardian($this->ownerGuardian)->user()?->getIdentifier() !== $id
             ))
             throw new UnauthenticatedError("Access denied");
     }
