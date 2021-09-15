@@ -67,6 +67,14 @@ class TypeFactory
     private array $hasOne = [];
 
     /**
+     * Properties defined by the doc. E.g. for adding Curfle-Model functions as properties
+     * or to disable either read or write access to this property.
+     *
+     * @var array
+     */
+    private array $docProperties = [];
+
+    /**
      * Class properties, used for caching puposes.
      *
      * @var ?array
@@ -274,10 +282,14 @@ class TypeFactory
         $properties = Inspector::getPropertiesFromClassDoc($this->dao);
 
         foreach ($properties as $property) {
-            if ($property->isArrayType())
-                $this->hasMany[$property->getName()] = $property;
-            else
-                $this->hasOne[$property->getName()] = $property;
+            if ($property->isPrimitiveType()) {
+                $this->docProperties[$property->getName()] = $property;
+            } else {
+                if ($property->isArrayType())
+                    $this->hasMany[$property->getName()] = $property;
+                else
+                    $this->hasOne[$property->getName()] = $property;
+            }
         }
     }
 
@@ -291,7 +303,7 @@ class TypeFactory
 
         foreach ($this->hasOne as $fieldname => $property) {
             // add property if writable
-            if($property->isWritable()){
+            if ($property->isWritable()) {
                 $fields[] = new GraphQLTypeField(
                     $fieldname,
                     $property->isNullable() ? new GraphQLInt() : new GraphQLNonNull(new GraphQLInt()),
@@ -312,7 +324,7 @@ class TypeFactory
 
         foreach ($this->hasMany as $fieldname => $property) {
             // add property if writable
-            if($property->isWritable()) {
+            if ($property->isWritable()) {
                 $fields[] = new GraphQLTypeField(
                     $fieldname,
                     new GraphQLList(new GraphQLNonNull(new GraphQLInt())),
@@ -338,7 +350,7 @@ class TypeFactory
 
         foreach ($this->hasOne as $fieldname => $property) {
             // add property if readable
-            if($property->isReadable()) {
+            if ($property->isReadable()) {
                 // get dao from property
                 $dao = $property->getType();
                 $guardians = $property->getGuardians();
@@ -375,7 +387,7 @@ class TypeFactory
 
         foreach ($this->hasMany as $fieldname => $property) {
             // add property if readable
-            if($property->isReadable()) {
+            if ($property->isReadable()) {
                 // get the guardians and inner type
                 $guardians = $property->getGuardians();
                 $innerType = $this->manager->build($property->getType());
@@ -407,11 +419,11 @@ class TypeFactory
     private function validateRequestWithGuardians(array $guardians)
     {
         // if no guardians available -> return
-        if(empty($guardians))
+        if (empty($guardians))
             return;
 
         // check if any guardian can validate the request
-        foreach($guardians as $guardian){
+        foreach ($guardians as $guardian) {
             if (Auth::guardian($guardian) !== null
                 && Auth::guardian($guardian)->validate(app("request")))
                 return;
@@ -432,11 +444,26 @@ class TypeFactory
     private function buildFieldsFromProperty(array $properties, bool $forInputType = false): array
     {
         $fields = [];
+        $seenDocProperties = [];
 
         foreach ($properties as $property) {
             // omit id on input type
             if ($forInputType && $property->getName() === "id")
                 continue;
+
+            // check if property is read or write only via checking existance in $this->docProperties
+            if (array_key_exists($property->getName(), $this->docProperties)) {
+                // note that property was already taken into account
+                $seenDocProperties[] = $property->getName();
+
+                // continue if is not writable on input type
+                if ($forInputType && !$this->docProperties[$property->getName()]->isWritable())
+                    continue;
+
+                // continue if is not readable on default type
+                if (!$forInputType && !$this->docProperties[$property->getName()]->isReadable())
+                    continue;
+            }
 
             // check if property is allowed and not in $hasMany or $hasOne
             if (!in_array($property->getName(), $this->ignore)
@@ -446,6 +473,21 @@ class TypeFactory
                     || !array_key_exists(Str::removeIn("_id", $property->getName()), $this->hasOne)
                 )) {
                 $fields[] = $this->buildFieldFromProperty($property);
+            }
+        }
+
+        // add doc properties
+        foreach ($this->docProperties as $name => $docProperty) {
+            if (!in_array($name, $seenDocProperties)){
+                // continue if is not writable on input type
+                if ($forInputType && !$docProperty->isWritable())
+                    continue;
+
+                // continue if is not readable on default type
+                if (!$forInputType && !$docProperty->isReadable())
+                    continue;
+
+                $fields[] = $this->buildFieldFromProperty($docProperty);
             }
         }
 
@@ -464,7 +506,7 @@ class TypeFactory
         return new GraphQLTypeField(
             $property->getName(),
             $this->buildTypeFromProperty($property),
-            defaultValue: $property->getDefaultValue()
+            defaultValue: $property->hasDefaultValue() ? $property->getDefaultValue() : null
         );
     }
 

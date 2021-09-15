@@ -82,11 +82,10 @@ class Inspector
             return [];
 
         $properties = static::parsePropertiesFromClassDoc($doc);
-        $properties = static::fullQualifyProperties($properties, $reflection->getNamespaceName());
         $properties = static::checkForArrayTypeInProperties($properties);
 
         // create \Leuchtturm\Utilities\Reflection\ReflectionProperty for the properties
-        return array_map(function ($property) {
+        $properties = array_map(function ($property) {
             return (new ReflectionProperty())
                 ->setName($property["name"])
                 ->setType($property["type"])
@@ -95,6 +94,8 @@ class Inspector
                 ->setIsArrayType($property["isArray"])
                 ->addGuardian($property["guardians"]);
         }, $properties);
+
+        return static::fullQualifyProperties($properties, $reflection->getNamespaceName());
     }
 
     /**
@@ -125,11 +126,8 @@ class Inspector
     {
         foreach ($properties as &$property) {
             // qualify type
-            if (!str_contains($property["type"], "\\")) {
-                if (str_starts_with($property["type"], "?"))
-                    $property["type"] = "?" . $namespace . "\\" . ltrim($property["type"], "?");
-                else
-                    $property["type"] = $namespace . "\\" . $property["type"];
+            if (!$property->isPrimitiveType() && !str_contains($property->getType(), "\\")) {
+                $property->setType($namespace . "\\" . $property->getType());
             }
         }
         return $properties;

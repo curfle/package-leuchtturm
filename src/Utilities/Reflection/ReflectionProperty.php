@@ -13,14 +13,14 @@ class ReflectionProperty
      *
      * @var string
      */
-    private string $name;
+    private string $name = "";
 
     /**
      * Type of the property.
      *
      * @var string
      */
-    private string $type;
+    private string $type = "";
 
     /**
      * Kind of the property (default, read or write).
@@ -34,7 +34,7 @@ class ReflectionProperty
      *
      * @var bool
      */
-    private bool $hasDefaultValue;
+    private bool $hasDefaultValue = false;
 
     /**
      * The property's default value.
@@ -89,7 +89,18 @@ class ReflectionProperty
      */
     public function getType(): string
     {
-        return $this->isNullable() ? ltrim($this->type, "?") : $this->type;
+        return ltrim($this->type, "?");
+    }
+
+    /**
+     * @return bool
+     */
+    public function isPrimitiveType(): bool
+    {
+        return match($this->getType()){
+            "int", "bool", "string", "float" => true,
+            default  => false
+        };
     }
 
     /**
@@ -98,7 +109,10 @@ class ReflectionProperty
      */
     public function setType(string $type): ReflectionProperty
     {
-        $this->type = $type;
+        if(str_starts_with($this->getType(), "?"))
+            $this->type = "?$type";
+        else
+            $this->type = "$type";
         return $this;
     }
 
