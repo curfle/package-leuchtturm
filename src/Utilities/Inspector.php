@@ -127,7 +127,8 @@ class Inspector
         foreach ($properties as &$property) {
             // qualify type
             if (!$property->isPrimitiveType() && !str_contains($property->getType(), "\\")) {
-                $property->setType($namespace . "\\" . $property->getType());
+                $prefix = $property->isNullable() ? "?" : "";
+                $property->setType($prefix . $namespace . "\\" . $property->getType());
             }
         }
         return $properties;
