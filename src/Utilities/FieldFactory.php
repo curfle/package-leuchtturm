@@ -257,7 +257,7 @@ class FieldFactory
                     if ($relationship instanceof OneToManyRelationship) {
                         foreach ($ids as $id) {
                             $fkPropertyColumn = "{$pureName}_id";
-                            $relatedEntry = call_user_func("{$hasMany[$argument]}::where", $fkPropertyColumn, $entry->id)
+                            $relatedEntry = call_user_func("{$hasMany[$argument]->getType()}::where", $fkPropertyColumn, $entry->id)
                                 ->update([$fkPropertyColumn => null]);
                         }
                     }
