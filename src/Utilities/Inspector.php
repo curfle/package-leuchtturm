@@ -40,7 +40,8 @@ class Inspector
         $reflection = new \ReflectionClass($class);
 
         foreach ($reflection->getProperties() as $property) {
-            $properties[$property->getName()] = $property;
+            if(!$property->isPrivate())
+                $properties[$property->getName()] = $property;
         }
 
         foreach ($reflection->getConstructor()->getParameters() as $parameter) {
