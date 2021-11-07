@@ -366,7 +366,7 @@ class TypeFactory
                         $this->validateRequestWithGuardians($guardians);
 
                         $daoClass = $manager->factory($dao)->getDAO();
-                        return call_user_func("$daoClass::get", $parent->{$fieldname});
+                        return $parent->{$fieldname};
                     }
                 );
             }
