@@ -19,7 +19,6 @@ use GraphQL\Types\GraphQLNonNull;
 use GraphQL\Types\GraphQLString;
 use GraphQL\Types\GraphQLType;
 use Leuchtturm\LeuchtturmException;
-use Opis\Closure\SerializableClosure;
 use ReflectionException;
 
 class FieldFactory
@@ -82,16 +81,16 @@ class FieldFactory
     /**
      * Callback that is executed before the actual execution of the field resolver.
      *
-     * @var SerializableClosure|null
+     * @var Closure|null
      */
-    private ?SerializableClosure $preExec = null;
+    private ?Closure $preExec = null;
 
     /**
      * Callback that is executed after the actual execution of the field resolver.
      *
-     * @var SerializableClosure|null
+     * @var Closure|null
      */
-    private ?SerializableClosure $postExec = null;
+    private ?Closure $postExec = null;
 
     /**
      * TypeFactory for building type and input type of the GraphQLTypeField.
@@ -471,7 +470,7 @@ class FieldFactory
      */
     public function pre(Closure $callback): static
     {
-        $this->preExec = new SerializableClosure($callback);
+        $this->preExec = $callback;
         return $this;
     }
 
@@ -483,7 +482,7 @@ class FieldFactory
      */
     public function post(Closure $callback): static
     {
-        $this->postExec = new SerializableClosure($callback);
+        $this->postExec = $callback;
         return $this;
     }
 

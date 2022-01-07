@@ -20,20 +20,9 @@ use function PHPUnit\Framework\assertEquals;
 class FieldFactoryTest extends TestCase
 {
     /**
-    * @throws ReflectionException
      */
     public function testSerialization()
     {
-        $manager = new LeuchtturmManager();
-        $manager->setVocab(new English());
-        $field = $manager->C(User::class)->pre(function(){
-            return 42;
-        });
-
-        $this->assertIsString(serialize($field));
-
-        $fieldClone = unserialize(serialize($field));
-
-        $this->assertEquals(42, $fieldClone->callPre());
+        $this->markTestSkipped("Serialization not supported anymore");
     }
 }
