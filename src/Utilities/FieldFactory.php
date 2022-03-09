@@ -9,6 +9,7 @@ use Curfle\DAO\Relationships\ManyToOneRelationship;
 use Curfle\DAO\Relationships\OneToManyRelationship;
 use Curfle\DAO\Relationships\OneToOneRelationship;
 use Curfle\Support\Facades\Auth;
+use Curfle\Support\Str as CurfleStr;
 use GraphQL\Arguments\GraphQLFieldArgument;
 use GraphQL\Errors\UnauthenticatedError;
 use GraphQL\Fields\GraphQLTypeField;
@@ -434,7 +435,7 @@ class FieldFactory
      */
     public function pureName(string $pureName): FieldFactory
     {
-        $this->pureName = $pureName;
+        $this->pureName = CurfleStr::lower($pureName);
         return $this;
     }
 

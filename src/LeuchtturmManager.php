@@ -85,7 +85,7 @@ class LeuchtturmManager
      */
     private function getFieldNameForClass(string $dao): string
     {
-        return strtolower($this->getShortNameForClass($dao));
+        return $this->getShortNameForClass($dao);
     }
 
     /**

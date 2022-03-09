@@ -22,4 +22,15 @@ class Str
 
         return $haystack;
     }
+
+    /**
+     * Sets the first letter to lower case.
+     *
+     * @param string $string
+     * @return string
+     */
+    public static function firstLetterLower(string $string): string
+    {
+        return lcfirst($string);
+    }
 }

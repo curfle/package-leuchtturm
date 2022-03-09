@@ -35,7 +35,7 @@ class English implements Vocab
 
     public function operationR(string $word): string
     {
-        return $word;
+        return lcfirst($word);
     }
 
     public function operationU(string $word): string
